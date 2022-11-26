@@ -10,7 +10,7 @@ name: Push to tinybird
 
 on:
   schedule:
-    - cron: 0 22 * * *
+    - cron: '6 22 * * *'
 
 permissions:
   contents: read
