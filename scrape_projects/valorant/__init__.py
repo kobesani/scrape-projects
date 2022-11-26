@@ -3,6 +3,7 @@ import pendulum
 import requests
 import uplink
 
+from loguru import logger
 from typing import List
 from scrape_projects.valorant.items import ValorantResultItem, try_pendulum_timestamp
 
@@ -73,18 +74,25 @@ class ValorantResults:
 
         return matches
 
-    def get_matches_in_timeframe(self, timestamp_isoformat: str) -> List[ValorantResultItem]:
+    def get_matches_in_timeframe(
+        self, timestamp_isoformat: str
+    ) -> List[ValorantResultItem]:
         end_interval = pendulum.parse(timestamp_isoformat).in_tz(
             pendulum.timezone("UTC")
         )
         start_interval = end_interval.subtract(days=1)
+        logger.info(
+            f"Scraping results between {end_interval.isoformat()} and {start_interval.isoformat()}"
+        )
         interval_started = False
         interval_completed = False
         next_page = 1
         matches_in_range = []
 
         while not (interval_completed):
-            print(f"Starting parsing page={next_page}")
+            logger.info(
+                f"Scraping page: https://vlr.gg/matches/results?page={next_page}"
+            )
             matches = self.scrape_results_page(next_page)
             timestamps = [
                 pendulum.parse(
@@ -105,10 +113,10 @@ class ValorantResults:
             if not (interval_started):
                 interval_started = len(matches_in_range) != 0
 
-            interval_completed = interval_started and (
-                timestamps[-1] < start_interval
-            )
+            interval_completed = interval_started and (timestamps[-1] < start_interval)
 
             next_page += 1
+
+        logger.info(f"Scraped {len(matches_in_range)} matches")
 
         return matches_in_range

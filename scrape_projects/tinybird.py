@@ -24,7 +24,7 @@ class TinyBirdApi(Consumer):
     ):
         pass
 
-    @returns.json
+    # @returns.json
     @post("/v0/events")
     def append_events(
         self,
