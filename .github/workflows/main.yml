@@ -4,9 +4,13 @@
 
 name: Push to tinybird
 
+# on:
+  # push:
+    # branches: [ "main" ]
+
 on:
-  push:
-    branches: [ "main" ]
+  schedule:
+    - cron: 0 0 * * *
 
 permissions:
   contents: read
@@ -47,10 +51,10 @@ jobs:
       name: Install library
       run: poetry install --no-interaction
     - 
-      name: Run tests
+      name: Push new data to tinybird
       run: |
         source .venv/bin/activate
-        bash run-tests.sh
+        python scrape_valorant_daily.py
     -
       name: Set branch name or tag
       id: version
