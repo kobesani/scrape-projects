@@ -10,7 +10,7 @@ on:
 
 # on:
 #   schedule:
-#     - cron: 0 0 * * *
+#     - cron: 0 22 * * *
 
 permissions:
   contents: read

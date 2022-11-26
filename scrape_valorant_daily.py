@@ -16,7 +16,7 @@ results = "\n".join(
     [
         result.process_item
         for result in scraper.get_matches_in_timeframe(
-            pendulum.now().subtract(days=1).isoformat()
+            pendulum.now().start_of('day').subtract(days=1).isoformat()
         )
     ]
 )
