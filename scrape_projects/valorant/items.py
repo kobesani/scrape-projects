@@ -70,7 +70,7 @@ class ValorantResultItem:
     def process_item(self) -> str:
         data = dataclasses.asdict(self)
         data["player_stats"] = player_stats_process(data.get("player_stats", None))
-        data["map_stats"] = map_stats_process(data.get("player_stats", None))
+        data["map_stats"] = map_stats_process(data.get("map_stats", None))
         data["start_timestamp"] = try_pendulum_timestamp(
             f"{data.get('start_date', None)} {data.get('start_time', None)}",
             "ddd, MMMM DD, YYYY hh:mm A",
