@@ -4,19 +4,20 @@
 
 name: Push to tinybird
 
-# on:
-  # push:
-    # branches: [ "main" ]
-
 on:
-  schedule:
-    - cron: 0 0 * * *
+  push:
+    branches: [ "main" ]
+
+# on:
+#   schedule:
+#     - cron: 0 0 * * *
 
 permissions:
   contents: read
 
 jobs:
   migrate:
+    environment: Tinybird
     runs-on: ubuntu-latest
     
     steps:
