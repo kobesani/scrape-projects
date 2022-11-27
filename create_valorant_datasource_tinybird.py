@@ -1,27 +1,28 @@
 import os
 
-from scrape_projects.tinybird import TinyBirdApi
+from dataclasses import asdict
+from loguru import logger
 
-# results page schema
-schema = (
-    "event String `json:$.event`, "
-    "map_stats UInt8 `json:$.map_stats`, "
-    "player_stats UInt8 `json:$.player_stats`, "
-    "stakes String `json:$.stakes`, "
-    "status String `json:$.status`, "
-    "start_timestamp DateTime `json:$.start_timestamp`, "
-    "link String `json:$.link`"
-)
+from scrape_projects.tinybird import DatasourcesApi
+from scrape_projects.valorant.datasources import DATASOURCES
 
-data = {
-    "format": "ndjson",
-    "name": "valorant_results_pages_test",
-    "mode": "create",
-    "schema": schema,
-}
 
-tinybird = TinyBirdApi(os.environ.get("TB_API_TOKEN"))
+tinybird = DatasourcesApi(os.environ.get("TB_API_TOKEN"))
 
-response = tinybird.create_datasource(**data)
+ds = DATASOURCES["valorant_results"]
 
-print(response)
+existing_datasources = DatasourcesApi.get_datasources()["datasources"]
+ds_already_exists = [
+    x for x in existing_datasources if x["name"] == ds.name
+]
+
+if len(ds_already_exists) == 0:
+    response = tinybird.create_datasource(**asdict(ds))
+else:
+    logger.warning(
+        f"Datsource named: {ds_already_exists[0]['name']} already exists, "
+        f"created at {ds_already_exists[0]['created_at']} "
+        f"with id {ds_already_exists[0]['id']}"
+    )
+
+logger.info(response)

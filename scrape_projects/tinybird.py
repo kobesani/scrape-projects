@@ -1,7 +1,54 @@
 import uplink
 
-from uplink import Body, Consumer, Query, get, post, put, returns
+from uplink import Body, Consumer, Path, Query, get, post, put, returns
 from uplink.auth import BearerToken
+
+
+class DatasourcesApi(Consumer):
+    def __init__(self, token: str, *args, **kwargs) -> None:
+        super().__init__(
+            base_url="https://api.tinybird.co/",
+            auth=BearerToken(token=token),
+            *args,
+            **kwargs
+        )
+
+    @returns.json
+    @get("/v0/datasources")
+    def get_datasources(self):
+        """
+        returns all datasources as a json object
+        """
+        pass
+
+    @returns.json
+    @post("/v0/datasources")
+    def create_datasource(
+        self,
+        format: Query(name="format", type=str),
+        name: Query(name="name", type=str),
+        mode: Query(name="mode", type=str),
+        schema: Query(name="schema", type=str),
+    ):
+        pass
+
+    @post("/v0/events")
+    def append_datasource(
+        self,
+        name: Query(name="name", type=str),
+        wait: Query(name="wait", type=bool),
+        data: Body,
+    ):
+        """
+        Appends events to a datasource as rows, data input format depends
+        on the defined datasource format, multiple records should be delimited
+        by new lines.
+        """
+        pass
+
+    @post("/v0/datasources/{name}/truncate")
+    def truncate_datasource(self, name: Path(name="name", type=str)):
+        pass
 
 
 class TinyBirdApi(Consumer):
@@ -12,6 +59,11 @@ class TinyBirdApi(Consumer):
             *args,
             **kwargs
         )
+
+    @returns.json
+    @get("/v0/datasources")
+    def get_datasources(self):
+        pass
 
     @returns.json
     @post("/v0/datasources")

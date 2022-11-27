@@ -8,8 +8,6 @@ from typing import List
 from scrape_projects.valorant.items import ValorantResultItem, try_pendulum_timestamp
 
 BASE_URL = "https://vlr.gg"
-TINYBIRD_DATASOURCE_NAME = "valorant_results"
-
 
 leaf_queries = {
     "start_time": "./div[@class='match-item-time']",
