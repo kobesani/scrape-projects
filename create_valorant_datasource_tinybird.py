@@ -3,11 +3,11 @@ import os
 from dataclasses import asdict
 from loguru import logger
 
-from scrape_projects.tinybird import DatasourcesApi
-from scrape_projects.valorant.datasources import DATASOURCES
+from scrape_projects.tinybird import DatasourcesApi, PipeApi
+from scrape_projects.valorant.datasources import DATASOURCES, PIPES
 
 
-tinybird = DatasourcesApi(os.environ.get("TB_API_TOKEN"))
+tinybird_ds = DatasourcesApi(os.environ.get("TB_API_TOKEN"))
 
 ds = DATASOURCES["valorant_results"]
 
@@ -17,7 +17,7 @@ ds_already_exists = [
 ]
 
 if len(ds_already_exists) == 0:
-    response = tinybird.create_datasource(**asdict(ds))
+    response = tinybird_ds.create_datasource(**asdict(ds))
 else:
     logger.warning(
         f"Datsource named: {ds_already_exists[0]['name']} already exists, "
@@ -26,3 +26,9 @@ else:
     )
 
 logger.info(response)
+
+tinybird_pipe = PipeApi(os.environ.get("TB_API_TOKEN"))
+
+pipe = PIPES["valorant_results"]
+create_pipe_response = tinybird_pipe.create_pipe(pipe.name, pipe.sql)
+pipe_json = create_pipe_response.json()
