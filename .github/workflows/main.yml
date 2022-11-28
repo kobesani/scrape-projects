@@ -5,6 +5,7 @@ name: Push to tinybird
 #     branches: [ "main" ]
 
 on:
+  workflow_dispatch:
   schedule:
     - cron: '15 16 * * *'
 
