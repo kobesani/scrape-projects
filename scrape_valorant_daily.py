@@ -8,7 +8,7 @@ from scrape_projects.valorant import (
     ValorantStatistics,
 )
 
-from scrape_projects.valorant.datasources import DATASOURCES
+from scrape_projects.valorant.datasources import VALORANT_RESULTS_DATASOURCE
 
 consumer = ValorantStatistics()
 scraper = ValorantResults(consumer=consumer)
@@ -24,7 +24,7 @@ results = "\n".join(
 
 tinybird = TinyBirdApi(os.environ.get("TB_API_TOKEN"))
 response = tinybird.append_events(
-    name=DATASOURCES["valorant_results"].name, wait=True, data=results
+    name=VALORANT_RESULTS_DATASOURCE.name, wait=True, data=results
 )
 
 resp_json = response.json()

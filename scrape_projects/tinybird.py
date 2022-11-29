@@ -85,7 +85,7 @@ class PipeApi(Consumer):
         pipe_name: Path(name="pipe_name", type=str),
         node_name: Query(name="name", type=str),
         description: Query(name="description", type=str),
-        data: Body(type=str),
+        data: Body(type=str), # data = sql to use as query
     ):
         pass
 
