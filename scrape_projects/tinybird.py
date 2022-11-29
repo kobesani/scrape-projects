@@ -166,7 +166,6 @@ class ValorantDatasourceApi(Consumer):
             **kwargs
         )
 
-    @returns.json
     @get("/v0/pipes/valorant_results_select_all.json")
     def query_matches_played(
         self,
