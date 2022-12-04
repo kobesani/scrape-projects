@@ -163,9 +163,9 @@ cython_debug/
 *.code-workspace
 
 # react build stuff
-./scrape_projects/api/react_scrapes/build
-./scrape_projects/api/react_scrapes/node_modules
-./scrape_projects/api/react_scrapes/coverage
+scrape_projects/api/react-scrapes/build
+scrape_projects/api/react-scrapes/node_modules
+scrape_projects/api/react-scrapes/coverage
 
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
