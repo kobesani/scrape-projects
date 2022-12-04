@@ -2,10 +2,9 @@ import datetime
 from pydantic import BaseModel
 
 
-
 class DateRange(BaseModel):
-    date_begin: datetime.date
-    date_end: datetime.date
+    date_begin: datetime.datetime
+    date_end: datetime.datetime
 
 
 class NumberMatchesDay(BaseModel):
