@@ -1,0 +1,187 @@
+base_url: https://www.vlr.gg
+selectors:
+  - attribute: games_with_data
+    query: "//div[contains(@class, 'vm-stats-gamesnav-item') and @data-disabled = '0' and re:test(@data-game-id, '^\\d+$')]/@data-game-id"
+    query_type: xpath
+    text_processing: direct
+    
+  - attribute: games
+    query: "//div[contains(@class, 'vm-stats-game ') and re:test(@data-game-id, '^\\d+$')]"
+    query_type: xpath
+    children:
+     - teams
+
+  - attribute: teams
+    parent: games
+    query: "./div[@class='vm-stats-game-header']/div[contains(@class, 'team')]"
+    query_type: xpath
+    parent: games
+    children:
+      - team_name
+      - team_result
+      - team_score
+
+  - attribute: patch
+    query: "//div/div[@class='wf-tooltip']"
+    query_type: xpath
+    parent: null
+    text_processing: direct
+    count: 1
+
+  - attribute: patch_old
+    query: "//div[@class='match-header-date']/div[not(@class)]/div[not(@class)]"
+    query_type: xpath
+    parent: null
+    text_processing: normalized
+    count: 1
+
+  - attribute: team_id
+    query: "//a[contains(@class, 'match-header-link wf-link-hover mod-')]/@href"
+    query_type: xpath
+    parent: null
+    text_processing: direct
+    count: 2
+
+  - attribute: match_result
+    query: "//div[@class='match-header-vs-score']/div[@class='match-header-vs-score']/div/span[contains(@class, 'winner') or contains(@class, 'loser')]"
+    query_type: xpath
+    parent: null
+    text_processing: normalized
+    count: 2
+
+  - attribute: team_name
+    query: "./div[not(@class)]/div[@class='team-name']"
+    query_type: xpath
+    parent: teams
+    text_processing: normalized
+    count: 2
+
+  - attribute: team_result
+    query: "./div[contains(@class, 'score')]/@class"
+    query_type: xpath
+    parent: teams
+    text_processing: direct
+    count: 2
+
+  - attribute: team_score
+    query: "./div[contains(@class, 'score')]"
+    query_type: xpath
+    parent: teams
+    text_processing: normalized
+    count: 2
+
+  - attribute: team_ct_score
+    query: "./div[not(@class)]/span[@class='mod-ct']"
+    query_type: xpath
+    parent: teams
+    text_processing: raw
+    count: 2
+
+  - attribute: team_t_score
+    query: "./div[not(@class)]/span[@class='mod-t']"
+    query_type: xpath
+    parent: teams
+    text_processing: raw
+    count: 2
+
+  - attribute: attack_start
+    query: "./div/span[1]/@class"
+    query_type: xpath
+    parent: teams
+    text_processing: direct
+
+  - attribute: agent
+    query: "./div/div/table/tbody/tr/td[@class='mod-agents']/div/span/img/@title"
+    query_type: xpath
+    parent: games
+    text_processing: direct
+
+  - attribute: player_id
+    query: "./div/div/table/tbody/tr/td[@class='mod-player']/div/a/@href"
+    query_type: xpath
+    parent: games
+    text_processing: direct
+
+  - attribute: player_name
+    query: "./div/div/table/tbody/tr/td[@class='mod-player']/div[not(@class)]/a/div[@class='text-of']"
+    query_type: xpath
+    parent: games
+    text_processing: normalized
+
+  - attribute: map_name
+    query: "./div[@class='vm-stats-game-header']/div[@class='map']/div/span"
+    query_type: xpath
+    parent: games
+    text_processing: normalized
+
+  - attribute: game_id
+    query: "@data-game-id"
+    query_type: xpath
+    parent: games
+    text_processing: direct
+
+  - attribute: kills
+    query: "./div/div/table/tbody/tr/td[contains(@class, 'mod-vlr-kills')]/span/span[contains(@class, 'mod-both')]"
+    query_type: xpath
+    parent: games
+    text_processing: raw
+
+  - attribute: deaths
+    query: "./div/div/table/tbody/tr/td[contains(@class, 'mod-vlr-deaths')]/span/span/span[@class='side mod-both']"
+    query_type: xpath
+    parent: games
+    text_processing: raw
+
+  - attribute: assists
+    query: "./div/div/table/tbody/tr/td[contains(@class, 'mod-vlr-assists')]/span/span[contains(@class, 'mod-both')]"
+    query_type: xpath
+    parent: games
+    text_processing: raw
+
+  - attribute: kd_diff
+    query: "./div/div/table/tbody/tr/td[contains(@class, 'mod-kd-diff')]/span/span[contains(@class, 'mod-both')]"
+    query_type: xpath
+    parent: games
+    text_processing: raw
+
+  - attribute: first_bloods
+    query: "./div/div/table/tbody/tr/td[contains(@class, 'mod-fb')]/span/span[contains(@class, 'mod-both')]"
+    query_type: xpath
+    parent: games
+    text_processing: raw
+
+  - attribute: first_deaths
+    query: "./div/div/table/tbody/tr/td[contains(@class, 'mod-fd')]/span/span[contains(@class, 'mod-both')]"
+    query_type: xpath
+    parent: games
+    text_processing: raw
+
+  - attribute: fkd_diff
+    query: "./div/div/table/tbody/tr/td[contains(@class, 'mod-fk-diff')]/span/span[contains(@class, 'mod-both')]"
+    query_type: xpath
+    parent: games
+    text_processing: raw
+
+  - attribute: acs
+    query: "./div/div/table/tbody/tr/td[3]/span/span[contains(@class, 'mod-both')]"
+    query_type: xpath
+    parent: games
+    text_processing: raw
+
+  - attribute: kast
+    query: "./div/div/table/tbody/tr/td[8]/span/span[contains(@class, 'mod-both')]"
+    query_type: xpath
+    parent: games
+    text_processing: raw
+
+  - attribute: adr
+    query: "./div/div/table/tbody/tr/td[9]/span/span[contains(@class, 'mod-both')]"
+    query_type: xpath
+    parent: games
+    text_processing: raw
+
+  - attribute: hs
+    query: "./div/div/table/tbody/tr/td[10]/span/span[contains(@class, 'mod-both')]"
+    query_type: xpath
+    parent: games
+    text_processing: raw
