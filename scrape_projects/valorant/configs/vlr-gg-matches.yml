@@ -90,6 +90,12 @@ selectors:
     parent: teams
     text_processing: direct
 
+  - attribute: stats_table_header
+    query: "(./div/div/table)[1]/thead/tr/th/@title"
+    query_type: xpath
+    parent: games
+    text_processing: direct
+
   - attribute: agent
     query: "./div/div/table/tbody/tr/td[@class='mod-agents']/div/span/img/@title"
     query_type: xpath
