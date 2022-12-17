@@ -43,10 +43,12 @@ def current_timezone_process(value: Optional[Timezone]) -> Optional[Timezone]:
     return value
 
 
-def try_pendulum_timestamp(timestamp: str, format: str):
+def try_pendulum_timestamp(
+    timestamp: str, format: str, timezone: Timezone = pendulum.timezone("UTC")
+):
     try:
         return (
-            pendulum.from_format(timestamp, format, tz=pendulum.now().tz)
+            pendulum.from_format(timestamp, format, tz=timezone)
             .astimezone(pendulum.timezone("UTC"))
             .isoformat()
         )
@@ -74,6 +76,7 @@ class ValorantResultItem:
         data["start_timestamp"] = try_pendulum_timestamp(
             f"{data.get('start_date', None)} {data.get('start_time', None)}",
             "ddd, MMMM DD, YYYY hh:mm A",
+            self.current_timezone,
         )
         fields_to_pop = ["start_date", "start_time", "current_timezone"]
         for field in fields_to_pop:
@@ -111,8 +114,9 @@ class TeamResult:
         return int(self._defense_score)
 
     @property
-    def start_side(self) -> Literal["attack", "defense"]:
-        return "attack" if "mod-ct" in self._start_side else "defense"
+    def start_side(self) -> int:
+        # defense = 1 and attack = 0
+        return 1 if "mod-ct" in self._start_side else 0
 
     @property
     def export_keys(self) -> List[str]:
@@ -186,7 +190,6 @@ class PlayerResult:
             return int(self._kast[:-1])
         except ValueError:
             return None
-        
 
     @property
     def adr(self) -> int:
