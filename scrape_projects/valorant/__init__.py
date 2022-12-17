@@ -248,7 +248,10 @@ class ValorantMatches:
         # remove the old patch xpath result no matter what happens before
         match_data.pop("patch_old")
 
-        patch = float(match_data["patch"][0].split()[-1])
+        if len(match_data["patch"]) != 0:
+            patch = float(match_data["patch"][0].split()[-1])
+        else:
+            patch = None
 
         team_ids = [int(x.split("/")[2]) for x in match_data["team_id"]]
 
