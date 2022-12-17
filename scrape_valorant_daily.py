@@ -1,9 +1,6 @@
 import os
-import pendulum
 
 from loguru import logger
-from uplink import Consumer, get
-from uplink.auth import ApiTokenParam
 
 from scrape_projects.tinybird import TinyBirdApi
 from scrape_projects.valorant import (
