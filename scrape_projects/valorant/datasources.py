@@ -25,7 +25,7 @@ class Datasource:
     format: str
     mode: str
     schema: str
-    pipes: Optional[List[Pipe]]
+    pipes: Optional[List[Pipe]] = None
 
 
 VALORANT_RESULTS_DATASOURCE = Datasource(
@@ -59,6 +59,49 @@ VALORANT_RESULTS_DATASOURCE = Datasource(
             ],
         )
     ],
+)
+
+VALORANT_MATCH_TEAM_RESULTS = Datasource(
+    name="valorant_team_results",
+    format="ndjson",
+    mode="create",
+    schema=(
+        "match_id UInt32 `json:$.match_id`, "
+        "patch Float32 `json:$.patch`, "
+        "game_id UInt32 `json:$.game_id`, "
+        "team_id UInt32 `json:$.team_id`, "
+        "team_name String `json:$.team_name`, "
+        "result UInt8 `json:$.result`, "
+        "score UInt8 `json:$.score`, "
+        "attack_score UInt8 `json:$.attack_score`, "
+        "defense_score UInt8 `json:$.defense_score`, "
+        "start_side UInt8 `json:$.start_side`"
+    ),
+    # engine="MergeTree",
+    # engine_sorting_key="match_id, game_id, patch, team_id"
+)
+
+VALORANT_MATCH_PLAYER_RESULTS = Datasource(
+    name="valorant_player_results",
+    format="ndjson",
+    mode="create",
+    schema=(
+        "match_id UInt32 `json:$.match_id`, "
+        "game_id UInt32 `json:$.game_id`, "
+        "team_id UInt32 `json:$.team_id`, "
+        "player_id UInt32 `json:$.player_id`, "
+        "player_name String `json:$.player_name`, "
+        "agent String `json:$.agent`, "
+        "kills UInt8 `json:$.kills`, "
+        "deaths UInt8 `json:$.deaths`, "
+        "assists UInt8 `json:$.assists`, "
+        "first_bloods UInt8 `json:$.first_bloods`, "
+        "first_deaths UInt8 `json:$.first_deaths`, "
+        "acs UInt32 `json:$.acs`, "
+        "kast UInt8 `json:$.kast`, "
+        "adr UInt32 `json:$.adr`, "
+        "hs UInt8 `json:$.hs`"
+    )
 )
 
 # DATASOURCES = {
