@@ -1,9 +1,11 @@
+import os
 import parsel
 import pendulum
 import requests
 import uplink
 import yaml
 
+from uplink.auth import ApiTokenParam
 from dataclasses import dataclass, asdict
 from loguru import logger
 from pathlib import Path
@@ -34,8 +36,6 @@ special_stats_columns = [
     "player_name",
     "agent",
     "deaths",
-    # "first_bloods",
-    # "first_deaths",
 ]
 
 leaf_queries = {
@@ -49,6 +49,20 @@ leaf_queries = {
 }
 
 player_stats_query = "./div/div/table/tbody/tr/td[{position}]/span/span[contains(@class, 'mod-both')]/text()"
+
+
+class TimezoneAPI(uplink.Consumer):
+    def __init__(self, token: str, *args, **kwargs):
+        super().__init__(
+            base_url="https://api.ipgeolocation.io",
+            auth=ApiTokenParam(param="apiKey", token=token),
+            *args,
+            **kwargs,
+        )
+
+    @uplink.get("/timezone")
+    def get_timezone(self):
+        pass
 
 
 class ValorantStatistics(uplink.Consumer):
@@ -71,6 +85,9 @@ class ValorantStatistics(uplink.Consumer):
 class ValorantResults:
     def __init__(self, consumer: uplink.Consumer = ValorantStatistics()) -> None:
         self.consumer = consumer
+        tz_consumer = TimezoneAPI(token=os.environ.get("IPGEO_API_KEY"))
+        self.timezone = pendulum.timezone(tz_consumer.get_timezone().json()["timezone"])
+        logger.info(f"Using timezone - {self.timezone}")
 
     def scrape_results_page(self, page: int) -> List[ValorantResultItem]:
         response = self.consumer.get_results(page=page)
@@ -90,7 +107,11 @@ class ValorantResults:
                 matches.append(
                     ValorantResultItem(
                         **(
-                            {"start_date": date, "link": match.xpath("@href").get()}
+                            {
+                                "start_date": date,
+                                "link": match.xpath("@href").get(),
+                                "current_timezone": self.timezone,
+                            }
                             | {
                                 leaf: match.xpath(query)
                                 .xpath("normalize-space(./text())")
@@ -103,12 +124,24 @@ class ValorantResults:
 
         return matches
 
+    def get_matches_from_last_day(self):
+        utc_to_actual_tz_now = (
+            pendulum.now("UTC")
+            .start_of("day")
+            .subtract(days=1)
+            .in_timezone(self.timezone)
+            .isoformat()
+        )
+
+        return self.get_matches_in_timeframe(utc_to_actual_tz_now)
+
     def get_matches_in_timeframe(
         self, timestamp_isoformat: str
     ) -> List[ValorantResultItem]:
-        end_interval = pendulum.parse(timestamp_isoformat).in_tz(
-            pendulum.timezone("UTC")
-        )
+        # end_interval = pendulum.parse(timestamp_isoformat).in_tz(
+        #     pendulum.timezone("UTC")
+        # )
+        end_interval = pendulum.parse(timestamp_isoformat)
         start_interval = end_interval.subtract(days=1)
         logger.info(
             f"Scraping results between {end_interval.isoformat()} and {start_interval.isoformat()}"
@@ -128,6 +161,7 @@ class ValorantResults:
                     try_pendulum_timestamp(
                         f"{match.start_date} {match.start_time}",
                         "ddd, MMMM DD, YYYY hh:mm A",
+                        timezone=self.timezone,
                     )
                 )
                 for match in matches
@@ -211,6 +245,7 @@ class ValorantMatches:
         if len(match_data["patch_old"]) != 0:
             match_data["patch"] = match_data["patch_old"]
 
+        # remove the old patch xpath result no matter what happens before
         match_data.pop("patch_old")
 
         patch = float(match_data["patch"][0].split()[-1])
@@ -272,9 +307,8 @@ class ValorantMatches:
             attribute: game_selector.xpath(
                 player_stats_query.format(position=positions.get(attribute))
             ).getall()
-            for attribute, selector in self.leaf_selectors.items()
+            for attribute in self.leaf_selectors
             if positions.get(attribute) is not None
-            # if selector.parent == "games" and selector.attribute != "stats_table_header"
         }
 
         players_data |= {
