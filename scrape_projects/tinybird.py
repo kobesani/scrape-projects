@@ -1,5 +1,7 @@
 import uplink
 
+from requests.models import Response
+from typing import Any, Dict, Optional
 from uplink import Body, Consumer, Path, Query, get, post, put, returns
 from uplink.auth import BearerToken
 
@@ -29,6 +31,7 @@ class DatasourcesApi(Consumer):
         name: Query(name="name", type=str),
         mode: Query(name="mode", type=str),
         schema: Query(name="schema", type=str),
+        data: Body = {}
     ):
         pass
 
@@ -85,12 +88,12 @@ class PipeApi(Consumer):
         pipe_name: Path(name="pipe_name", type=str),
         node_name: Query(name="name", type=str),
         description: Query(name="description", type=str),
-        data: Body(type=str), # data = sql to use as query
+        data: Body(type=str),  # data = sql to use as query
     ):
         pass
 
     @put("/v0/pipes/{pipe}/endpoint")
-    def enable_node(self, pipe: uplink.Path(name="pipe", type=str), data: Body):
+    def enable_node(self, pipe: uplink.Path(name="pipe", type=str), data: Body) -> Response:
         """
         Enables a particular transformation for a pipe. This endpoint requires the
         pipe name (param: pipe) and the id of the transformation node for the pipe.
@@ -153,7 +156,7 @@ class TinyBirdApi(Consumer):
         pass
 
     @put("/v0/pipes/{pipe}/endpoint")
-    def enable_node(self, pipe: uplink.Path(name="pipe", type=str), data: Body):
+    def enable_node(self, pipe: uplink.Path(name="pipe", type=str), data: Body) -> Response:
         pass
 
 
@@ -175,3 +178,21 @@ class ValorantDatasourceApi(Consumer):
     ):
         pass
 
+
+def get_active_node(consumer: PipeApi, pipe_name: str) -> Optional[Dict[str, Any]]:
+    result = consumer.get_pipe(pipe_name)
+    active_endpoint_id = result["endpoint"]
+    for node in result["nodes"]:
+        if node["id"] == active_endpoint_id:
+            return node
+    return None
+
+
+def set_active_node(
+    consumer: PipeApi, pipe_name: str, endpoint_name: str
+) -> Optional[Response]:
+    pipe_info = consumer.get_pipe(pipe_name)
+    for node in pipe_info["nodes"]:
+        if node["name"] == endpoint_name:
+            return consumer.enable_node(pipe_name, node["id"])
+    return None

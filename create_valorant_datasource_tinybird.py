@@ -3,7 +3,11 @@ import os
 from loguru import logger
 
 from scrape_projects.tinybird import DatasourcesApi, PipeApi
-from scrape_projects.valorant.datasources import VALORANT_RESULTS_DATASOURCE
+from scrape_projects.valorant.datasources import (
+    VALORANT_RESULTS_DATASOURCE,
+    VALORANT_MATCH_PLAYER_RESULTS,
+    VALORANT_MATCH_TEAM_RESULTS,
+)
 
 
 tinybird_ds = DatasourcesApi(os.environ.get("TB_API_TOKEN"))
@@ -38,3 +42,25 @@ pipe_json = create_pipe_response.json()
 node = pipe.nodes[0]
 # tinybird_pipe.enable_node()
 tinybird_pipe.append_node(pipe_name=pipe.name, node_name=node.name)
+
+resp = tinybird_ds.create_datasource(
+    format=VALORANT_MATCH_TEAM_RESULTS.format,
+    name=VALORANT_MATCH_TEAM_RESULTS.name,
+    mode=VALORANT_MATCH_TEAM_RESULTS.mode,
+    schema=VALORANT_MATCH_TEAM_RESULTS.schema,
+    data={
+        "engine": "MergeTree",
+        "engine_sorting_key": "match_id, game_id, patch, team_id",
+    },
+)
+
+resp = tinybird_ds.create_datasource(
+    format=VALORANT_MATCH_PLAYER_RESULTS.format,
+    name=VALORANT_MATCH_PLAYER_RESULTS.name,
+    mode=VALORANT_MATCH_PLAYER_RESULTS.mode,
+    schema=VALORANT_MATCH_PLAYER_RESULTS.schema,
+    data={
+        "engine": "MergeTree",
+        "engine_sorting_key": "match_id, game_id, team_id, player_id",
+    },
+)
