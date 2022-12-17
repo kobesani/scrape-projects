@@ -1,16 +1,42 @@
+import os
 import parsel
 import pendulum
 import requests
 import uplink
 import yaml
 
+from uplink.auth import ApiTokenParam
 from dataclasses import dataclass, asdict
 from loguru import logger
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Tuple, Union
-from scrape_projects.valorant.items import ValorantResultItem, try_pendulum_timestamp
+from scrape_projects.valorant.items import (
+    ValorantResultItem,
+    try_pendulum_timestamp,
+    TeamResult,
+    PlayerResult,
+)
 
 BASE_URL = "https://vlr.gg"
+
+stats_table_map = {
+    "Rating": "rating",
+    "Average Combat Score": "acs",
+    "Kills": "kills",
+    "Assists": "assists",
+    "Kill, Assist, Trade, Survive %": "kast",
+    "Average Damage per Round": "adr",
+    "Headshot %": "hs",
+    "First Kills": "first_bloods",
+    "First Deaths": "first_deaths",
+}
+
+special_stats_columns = [
+    "player_id",
+    "player_name",
+    "agent",
+    "deaths",
+]
 
 leaf_queries = {
     "start_time": "./div[@class='match-item-time']",
@@ -21,6 +47,22 @@ leaf_queries = {
     "player_stats": "./div[@class='match-item-vod']/div[@class='wf-tag mod-big'][2]",
     "map_stats": "./div[@class='match-item-vod']/div[@class='wf-tag mod-big'][1]",
 }
+
+player_stats_query = "./div/div/table/tbody/tr/td[{position}]/span/span[contains(@class, 'mod-both')]/text()"
+
+
+class TimezoneAPI(uplink.Consumer):
+    def __init__(self, token: str, *args, **kwargs):
+        super().__init__(
+            base_url="https://api.ipgeolocation.io",
+            auth=ApiTokenParam(param="apiKey", token=token),
+            *args,
+            **kwargs,
+        )
+
+    @uplink.get("/timezone")
+    def get_timezone(self):
+        pass
 
 
 class ValorantStatistics(uplink.Consumer):
@@ -43,6 +85,9 @@ class ValorantStatistics(uplink.Consumer):
 class ValorantResults:
     def __init__(self, consumer: uplink.Consumer = ValorantStatistics()) -> None:
         self.consumer = consumer
+        tz_consumer = TimezoneAPI(token=os.environ.get("IPGEO_API_KEY"))
+        self.timezone = pendulum.timezone(tz_consumer.get_timezone().json()["timezone"])
+        logger.info(f"Using timezone - {self.timezone}")
 
     def scrape_results_page(self, page: int) -> List[ValorantResultItem]:
         response = self.consumer.get_results(page=page)
@@ -62,7 +107,11 @@ class ValorantResults:
                 matches.append(
                     ValorantResultItem(
                         **(
-                            {"start_date": date, "link": match.xpath("@href").get()}
+                            {
+                                "start_date": date,
+                                "link": match.xpath("@href").get(),
+                                "current_timezone": self.timezone,
+                            }
                             | {
                                 leaf: match.xpath(query)
                                 .xpath("normalize-space(./text())")
@@ -75,12 +124,24 @@ class ValorantResults:
 
         return matches
 
+    def get_matches_from_last_day(self):
+        utc_to_actual_tz_now = (
+            pendulum.now("UTC")
+            .start_of("day")
+            .subtract(days=1)
+            .in_timezone(self.timezone)
+            .isoformat()
+        )
+
+        return self.get_matches_in_timeframe(utc_to_actual_tz_now)
+
     def get_matches_in_timeframe(
         self, timestamp_isoformat: str
     ) -> List[ValorantResultItem]:
-        end_interval = pendulum.parse(timestamp_isoformat).in_tz(
-            pendulum.timezone("UTC")
-        )
+        # end_interval = pendulum.parse(timestamp_isoformat).in_tz(
+        #     pendulum.timezone("UTC")
+        # )
+        end_interval = pendulum.parse(timestamp_isoformat)
         start_interval = end_interval.subtract(days=1)
         logger.info(
             f"Scraping results between {end_interval.isoformat()} and {start_interval.isoformat()}"
@@ -100,6 +161,7 @@ class ValorantResults:
                     try_pendulum_timestamp(
                         f"{match.start_date} {match.start_time}",
                         "ddd, MMMM DD, YYYY hh:mm A",
+                        timezone=self.timezone,
                     )
                 )
                 for match in matches
@@ -133,6 +195,22 @@ class ValorantMatches:
         "attack_start",
     )
 
+    player_result_order: Tuple[str] = (
+        "team_id",
+        "player_id",
+        "player_name",
+        "agent",
+        "kills",
+        "deaths",
+        "assists",
+        "first_bloods",
+        "first_deaths",
+        "acs",
+        "kast",
+        "adr",
+        "hs",
+    )
+
     def __init__(
         self,
         config_path: Path = Path(__file__).parent / "configs" / "vlr-gg-matches.yml",
@@ -145,7 +223,7 @@ class ValorantMatches:
             for attribute, selector in self.config.selector_configs.items()
             if selector.children is None
         }
-        self.selectors = self.config.selector_configs
+        self.selectors: Dict[str, SelectorConfig] = self.config.selector_configs
 
     def scrape_match_page(self, match_id: int, match_stub: str):
         response = self.consumer.get_match(match_id=match_id, match_stub=match_stub)
@@ -157,6 +235,24 @@ class ValorantMatches:
             if y.parent is None and y.children is None
         }
 
+        match_data["patch"] = (
+            self.leaf_selectors["patch"]
+            .get(main_selector)
+            .xpath("normalize-space(text()[1])")
+            .getall()
+        )
+
+        if len(match_data["patch_old"]) != 0:
+            match_data["patch"] = match_data["patch_old"]
+
+        # remove the old patch xpath result no matter what happens before
+        match_data.pop("patch_old")
+
+        if len(match_data["patch"]) != 0:
+            patch = float(match_data["patch"][0].split()[-1])
+        else:
+            patch = None
+
         team_ids = [int(x.split("/")[2]) for x in match_data["team_id"]]
 
         game_ids = [
@@ -165,7 +261,9 @@ class ValorantMatches:
         ]
 
         match_data["games"] = [
-            self.scrape_data_from_game(main_selector, match_id, game_id, team_ids)
+            self.scrape_data_from_game(
+                main_selector, match_id, game_id, team_ids, patch
+            )
             for game_id in game_ids
         ]
 
@@ -177,10 +275,22 @@ class ValorantMatches:
         match_id: int,
         game_id: int,
         team_ids: Tuple[int, int],
+        patch: float,
     ):
         game_selector = parent_selector.xpath(
             f"//div[contains(@class, 'vm-stats-game ') and @data-game-id = '{game_id}']"
         )
+
+        box_score_header = self.selectors["stats_table_header"].get(
+            game_selector, process_text=True
+        )
+        # enumerate starts from 2 because the first column (player) doesn't have a header
+        # and position is 1-based
+        positions = {
+            stats_table_map.get(y): x
+            for (x, y) in enumerate(box_score_header, start=2)
+            if stats_table_map.get(y) is not None
+        }
 
         teams_selector = self.selectors["teams"].get(game_selector)
         teams_data = {
@@ -190,19 +300,41 @@ class ValorantMatches:
         }
 
         team_results = [
-            TeamResult(match_id, game_id, team_id, *data)
+            TeamResult(match_id, patch, game_id, team_id, *data)
             for team_id, data in zip(
                 team_ids, zip(*[teams_data[x] for x in self.team_result_order])
             )
         ]
 
         players_data = {
-            attribute: selector.get(game_selector, process_text=True)
-            for attribute, selector in self.leaf_selectors.items()
-            if selector.parent == "games"
+            attribute: game_selector.xpath(
+                player_stats_query.format(position=positions.get(attribute))
+            ).getall()
+            for attribute in self.leaf_selectors
+            if positions.get(attribute) is not None
         }
 
-        return {"team_results": [x.export for x in team_results]} | players_data
+        players_data |= {
+            attribute: self.leaf_selectors[attribute].get(
+                game_selector, process_text=True
+            )
+            for attribute in special_stats_columns
+        }
+
+        players_data["team_id"] = [team_ids[0]] * 5 + [team_ids[1]] * 5
+        players_data["player_id"] = [
+            int(player_id.split("/")[2]) for player_id in players_data["player_id"]
+        ]
+
+        player_results = [
+            PlayerResult(match_id, game_id, *data)
+            for data in zip(*[players_data[x] for x in self.player_result_order])
+        ]
+
+        return {
+            "team_results": [x.export for x in team_results],
+            "player_results": [x.export() for x in player_results],
+        }
 
 
 @dataclass
@@ -255,149 +387,3 @@ class ScrapeConfig:
             selector["attribute"]: SelectorConfig(**selector)
             for selector in parsed_yaml["selectors"]
         }
-
-
-@dataclass
-class TeamResult:
-    match_id: int
-    game_id: int
-    team_id: int
-    team_name: str
-    _result: str
-    _score: str
-    _defense_score: str
-    _attack_score: str
-    _start_side: str
-
-    @property
-    def result(self) -> int:
-        return 1 if "mod-win" in self._result else 0
-
-    @property
-    def score(self) -> int:
-        return int(self._score)
-
-    @property
-    def attack_score(self) -> int:
-        return int(self._attack_score)
-
-    @property
-    def defense_score(self) -> int:
-        return int(self._defense_score)
-
-    @property
-    def start_side(self) -> Literal["attack", "defense"]:
-        return "attack" if "mod-ct" in self._start_side else "defense"
-
-    @property
-    def export_keys(self) -> List[str]:
-        return [
-            "match_id",
-            "game_id",
-            "team_id",
-            "team_name",
-        ]
-
-    @property
-    def export(self) -> Dict[str, Any]:
-        return {
-            "result": self.result,
-            "score": self.score,
-            "defense_score": self.defense_score,
-            "attack_score": self.attack_score,
-            "start_side": self.start_side,
-        } | {key: self.__dict__[key] for key in self.export_keys}
-
-
-@dataclass
-class PlayerResult:
-    match_id: int
-    game_id: int
-    team_id: int
-    player_id: int
-    player_name: str
-    agent: str
-    _kills: str
-    _deaths: str
-    _assists: str
-    _first_bloods: str
-    _first_deaths: str
-    _acs: str
-    _kast: str
-    _adr: str
-    _hs: str
-
-    def convert_to_int(self, attribute: str) -> int:
-        return int(self.__dict__[attribute])
-
-    @property
-    def kills(self) -> int:
-        return self.convert_to_int("_kills")
-
-    @property
-    def deaths(self) -> int:
-        return self.convert_to_int("_deaths")
-
-    @property
-    def assists(self) -> int:
-        return self.convert_to_int("_assists")
-
-    @property
-    def first_bloods(self) -> int:
-        return self.convert_to_int("_first_bloods")
-
-    @property
-    def first_deaths(self) -> int:
-        return self.convert_to_int("_first_deaths")
-
-    @property
-    def acs(self) -> int:
-        return self.convert_to_int("_acs")
-
-    @property
-    def kast(self) -> int:
-        return int(self._kast[:-1])
-
-    @property
-    def adr(self) -> int:
-        return self.convert_to_int("_adr")
-
-    @property
-    def hs(self) -> int:
-        return int(self._hs[:-1])
-
-    def export(self) -> Dict[str, Any]:
-        return self.get_properties() | {
-            x: y for x, y in asdict(self).items() if not x.startswith("_")
-        }
-
-    def get_properties(self) -> Dict[str, Any]:
-        properties = {}
-        for name in dir(self.__class__):
-            obj = getattr(self.__class__, name)
-            if isinstance(obj, property):
-                properties[name] = obj.__get__(self, self.__class__)
-        return properties
-
-
-@dataclass
-class GameMetaData:
-    match_id: int
-    _blah: int
-
-    @property
-    def blah(self) -> int:
-        return 2
-
-    def export(self) -> Dict[str, Any]:
-        return self.get_properties() | {
-            x: y for x, y in asdict(self).items() if not x.startswith("_")
-        }
-
-    def get_properties(self) -> Dict[str, Any]:
-        properties = {}
-        for name in dir(self.__class__):
-            obj = getattr(self.__class__, name)
-            if isinstance(obj, property):
-                properties[name] = obj.__get__(self, self.__class__)
-        return properties

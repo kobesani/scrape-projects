@@ -1,5 +1,5 @@
 import os
-import pendulum
+
 from loguru import logger
 
 from scrape_projects.tinybird import TinyBirdApi
@@ -14,12 +14,7 @@ consumer = ValorantStatistics()
 scraper = ValorantResults(consumer=consumer)
 
 results = "\n".join(
-    [
-        result.process_item
-        for result in scraper.get_matches_in_timeframe(
-            pendulum.now().start_of('day').subtract(days=1).isoformat()
-        )
-    ]
+    [result.process_item for result in scraper.get_matches_from_last_day()]
 )
 
 tinybird = TinyBirdApi(os.environ.get("TB_API_TOKEN"))

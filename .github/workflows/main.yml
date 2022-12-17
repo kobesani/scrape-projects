@@ -52,6 +52,7 @@ jobs:
       name: Push new data to tinybird
       env:
         TB_API_TOKEN: ${{ secrets.TB_API_TOKEN }}
+        IPGEO_API_KEY: ${{ secrets.IPGEO_API_KEY }}
       run: |
         source .venv/bin/activate
         python scrape_valorant_daily.py
