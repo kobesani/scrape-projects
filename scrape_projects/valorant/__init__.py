@@ -138,9 +138,6 @@ class ValorantResults:
     def get_matches_in_timeframe(
         self, timestamp_isoformat: str
     ) -> List[ValorantResultItem]:
-        # end_interval = pendulum.parse(timestamp_isoformat).in_tz(
-        #     pendulum.timezone("UTC")
-        # )
         end_interval = pendulum.parse(timestamp_isoformat)
         start_interval = end_interval.subtract(days=1)
         logger.info(
@@ -259,6 +256,14 @@ class ValorantMatches:
             int(x)
             for x in self.selectors["games_with_data"].get(main_selector).getall()
         ]
+
+        if not game_ids:
+            # could be match with only one game
+            game_ids.append(
+                main_selector.xpath(
+                    "//div[contains(@class, 'vm-stats-game ') and re:test(@data-game-id, '^\\d+$')]/@data-game-id"
+                ).get()
+            )
 
         match_data["games"] = [
             self.scrape_data_from_game(

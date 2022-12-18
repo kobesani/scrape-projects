@@ -17,13 +17,7 @@ from scrape_projects.valorant.datasources import (
     VALORANT_MATCH_TEAM_RESULTS,
 )
 
-
-def flatten(l: list):
-    return [item for sublist in l for item in sublist]
-
-
 consumer = ValorantStatistics()
-# scraper = ValorantResults(consumer=consumer)
 scraper = ValorantMatches(
     config_path=Path(__file__).parent
     / "scrape_projects"
@@ -34,16 +28,14 @@ scraper = ValorantMatches(
 )
 
 tinybird = ValorantDatasourceApi(os.environ.get("TB_API_TOKEN"))
-utc_tz = pendulum.timezone("UTC")
-end_day = pendulum.now().start_of("day").subtract(days=2)
-end_day_utc = end_day.in_tz(utc_tz).add(seconds=end_day.offset)
+end_day_utc = pendulum.now().utcnow().start_of("day").subtract(days=1)
 start_day_utc = end_day_utc.subtract(days=1)
 
 matches_to_scrape = tinybird.query_matches_played(
     start_date=start_day_utc.to_datetime_string(),
     end_date=end_day_utc.to_datetime_string(),
 )
-print(matches_to_scrape)
+
 logger.info(
     f"{len(matches_to_scrape['data'])} retrieved for {start_day_utc.isoformat()} to {end_day_utc.isoformat()}"
 )
@@ -65,20 +57,12 @@ team_results = []
 player_results = []
 for result in results:
     for game in result["games"]:
-        # team_results.append(game["team_results"][0])
-        # team_results.append(game["team_results"][1])
-        for team_result in game["team_results"]:
-            team_results.append(team_result)
+        team_results += game["team_results"]
+        player_results += game["player_results"]
 
-        for player in game["player_results"]:
-            player_results.append(player)
 
 team_results_dump = "\n".join([json.dumps(result) for result in team_results])
 player_results_dump = "\n".join([json.dumps(result) for result in player_results])
-
-# response = tinybird.append_events(
-#     name=VALORANT_RESULTS_DATASOURCE.name, wait=True, data=results
-# )
 
 tinybird_append = TinyBirdApi(os.environ.get("TB_API_TOKEN"))
 

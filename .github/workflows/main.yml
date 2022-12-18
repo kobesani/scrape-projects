@@ -49,10 +49,18 @@ jobs:
       name: Install library
       run: poetry install --no-interaction
     - 
-      name: Push new data to tinybird
+      name: Push new result data to tinybird
       env:
         TB_API_TOKEN: ${{ secrets.TB_API_TOKEN }}
         IPGEO_API_KEY: ${{ secrets.IPGEO_API_KEY }}
       run: |
         source .venv/bin/activate
         python scrape_valorant_daily.py
+    - 
+      name: Push new match data to tinybird
+      env:
+        TB_API_TOKEN: ${{ secrets.TB_API_TOKEN }}
+        IPGEO_API_KEY: ${{ secrets.IPGEO_API_KEY }}
+      run: |
+        source .venv/bin/activate
+        python scrape_valorant_matches_daily.py
